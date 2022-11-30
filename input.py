@@ -45,19 +45,20 @@ def main():
                 t_id = args[0]
                 var = args[1]
                 val = args[2]
-                transaction_manager.write(t_id, var, val)
+                transaction_manager.write(t_id, var, val, time)
             elif command == 'R':
                 t_id = args[0]
                 var = args[1]
                 transaction_manager.read(t_id, var, time)
             elif command == 'end':
                 t_id = args[0]
+                transaction_manager.end(t_id, time)
             elif command == 'fail':
                 s_id = args[0]
             elif command == 'recover':
                 s_id = args[0]
             elif command == 'dump':
-                print('all')
+                transaction_manager.dump()
             else:
                 print("incorrect input")
                 exit()
