@@ -5,5 +5,5 @@ class Variable:
         self.lock = lock
         self.commited_value = val
         self.commited_time = 0
-        self.replicated = True
+        self.replicated = replicated
         self.readable = True

@@ -1,5 +1,4 @@
 from enum import Enum
 class Status(Enum):
-    READY = 1
-    AVAILABLE = 2
-    FAILED = 3
+    AVAILABLE = 1
+    FAILED = 2

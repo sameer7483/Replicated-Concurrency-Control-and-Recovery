@@ -12,7 +12,7 @@ class Site:
 
     def can_acquire_read_lock(self, t_id, var_name):
         for lock in self.lock_table[var_name]:
-            if lock.lock_type == LockType.WRITE and lock.t_id != t_id:
+            if lock.t_id != t_id and lock.lock_type == LockType.WRITE: 
                 print("Cannot Acquire Lock and Write Lock Already acquired by another t_id")
                 return False
         return True
@@ -66,7 +66,7 @@ class Site:
         self.status = Status.AVAILABLE
     
     def can_read(self, t_id, var_name):
-        if not self.status.AVAILABLE:
+        if self.status != Status.AVAILABLE:
             return False
         if var_name not in self.variables:
             return False
@@ -75,7 +75,7 @@ class Site:
         return self.can_acquire_read_lock(t_id, var_name)
 
     def can_write(self, t_id, var_name):
-        if not self.status.AVAILABLE:
+        if self.status != Status.AVAILABLE:
             return False
         if var_name not in self.variables:
             return False
@@ -86,6 +86,9 @@ class Site:
         for lock in self.lock_table[var]:
             t_ids.add(lock.t_id)
         return t_ids
+    
+    def print_site_status(self):
+        print(f'{self.name}: {self.status}')
 
 
 class SiteManager:
@@ -96,13 +99,13 @@ class SiteManager:
         for i in range(1, num_site+1):
             variables = defaultdict(Variable)
             for j in range(1, num_var+1):
-                if j % 2 == 0 or ():
+                if j % 2 == 0:
                     var = Variable('x'+str(j), 10*j, Lock(LockType.NO_LOCK, 'x'+str(j)), True)
                     variables['x'+str(j)] = var   
                 elif j % 2 != 0 and (1+ j%10) == i:
                     var = Variable('x'+str(j), 10*j, Lock(LockType.NO_LOCK, 'x'+str(j)))
                     variables['x'+str(j)] = var                         
-            s = Site(str(i),Status.READY, variables)
+            s = Site(str(i),Status.AVAILABLE, variables)
             sites[str(i)] = s        
         self.sites = sites
 
@@ -126,11 +129,10 @@ class SiteManager:
                     site.variables[var].val = val
                     sites_written.append(name)
         return sites_written
-
-    def end(self, t_id):
-        pass
-
+ 
     def commit(self, site_name, t_id, time):
+        if self.sites[site_name].status != Status.AVAILABLE:
+            return
         for locks in self.sites[site_name].lock_table.values():
             for lock in locks:
                 if lock.t_id == t_id and lock.lock_type == LockType.WRITE:
@@ -166,5 +168,9 @@ class SiteManager:
         for site in self.sites.values():
             t_ids.update(site.get_locking_transaction(var))
         return t_ids
+
+    def print_all_site_status(self):
+        for site in self.sites.values():
+            site.print_site_status()
 
 

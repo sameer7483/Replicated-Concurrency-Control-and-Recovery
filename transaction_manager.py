@@ -5,6 +5,7 @@ from instruction import Instruction
 from instruction_type import InstructionType
 from site_manager import SiteManager
 
+
 class TransactionManager:
     def __init__(self):
         self.transaction_map = defaultdict(Transaction)
@@ -27,87 +28,94 @@ class TransactionManager:
             return
         instruction = Instruction(t_id, InstructionType.READ, var, None, time)
         transaction = self.transaction_map[t_id]
-        conflicting_transaction = self.check_conflict_in_remaining_instructions(instruction)
+        conflicting_transaction = self.check_conflict_in_remaining_instructions(
+            instruction)
         if conflicting_transaction == None:
             val, site = self.site_manager.read(t_id, var)
             if site is not None:
                 transaction.status = TransactionStatus.RUNNING
                 self.transaction_map[t_id].sites_accessed.add(site)
-                print(f'{t_id} accessed {var} from the site: {site} having value: {val}')
+                print(
+                    f'{t_id} accessed {var} from the site: {site} having value: {val}')
                 return
             else:
-                self.update_wait_for_graph_with_executing_transaction(t_id, var)
+                self.update_wait_for_graph_with_executing_transaction(
+                    t_id, var)
         else:
             self.update_wait_for_graph(t_id, conflicting_transaction)
         if transaction.status != TransactionStatus.BLOCKED:
             self.remaining_instructions.append(instruction)
             transaction.status = TransactionStatus.BLOCKED
-            print(f'Blocked transaction: {t_id}')              
+            print(f'Blocked transaction: {t_id}')
         self.detect_and_handle_deadlock(t_id)
 
-        
+
     def write(self, t_id, var, val, time):
         if t_id not in self.transaction_map:
             print(f'{t_id} transaction is not yet started')
             return
         instruction = Instruction(t_id, InstructionType.WRITE, var, val, time)
         transaction = self.transaction_map[t_id]
-        conflicting_transaction = self.check_conflict_in_remaining_instructions(instruction)
+        conflicting_transaction = self.check_conflict_in_remaining_instructions(
+            instruction)
         # print(conflicting_transaction)
-        if conflicting_transaction == None:
+        if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0:
             sites_written = self.site_manager.write(t_id, var, val)
             if len(sites_written) > 0:
                 transaction.status = TransactionStatus.RUNNING
                 self.transaction_map[t_id].sites_accessed.update(sites_written)
-                print(f'{t_id} wrote {var} to the sites: {sites_written} with value: {val}')
+                print(
+                    f'{t_id} wrote {var} to the sites: {sites_written} with value: {val}')
                 return
             else:
-                self.update_wait_for_graph_with_executing_transaction(t_id, var)         
+                self.update_wait_for_graph_with_executing_transaction(
+                    t_id, var)
         else:
             self.update_wait_for_graph(t_id, conflicting_transaction)
         if transaction.status != TransactionStatus.BLOCKED:
             self.remaining_instructions.append(instruction)
             transaction.status = TransactionStatus.BLOCKED
-            print(f'Blocked transaction: {t_id}')               
+            print(f'Blocked transaction: {t_id}')
         self.detect_and_handle_deadlock(t_id)
 
     def end(self, t_id, time):
         if t_id in self.transaction_map:
             if self.transaction_map[t_id].status == TransactionStatus.ABORTED:
                 self.abort(t_id, time)
-            else:    
+            else:
                 self.commit(t_id, time)
         self.process_remaining_instructions()
 
     def abort(self, t_id, time):
-            sites_accessed = self.transaction_map[t_id].sites_accessed
-            for site in sites_accessed:
-                self.site_manager.abort(site, t_id, time)
-            self.transaction_map.pop(t_id)
-            self.remove_transaction_from_wait_for_graph(t_id)
-            print(f'Transaction:{t_id} aborts')
-            self.process_remaining_instructions()
+        sites_accessed = self.transaction_map[t_id].sites_accessed
+        for site in sites_accessed:
+            self.site_manager.abort(site, t_id, time)
+        self.transaction_map.pop(t_id)
+        self.remove_transaction_from_wait_for_graph(t_id)
+        print(f'Transaction:{t_id} aborts')
+        self.process_remaining_instructions()
 
     def commit(self, t_id, time):
-        if self.transaction_map[t_id].status != TransactionStatus.ABORTED:
-            sites_accessed = self.transaction_map[t_id].sites_accessed
-            for site in sites_accessed:
-                self.site_manager.commit(site, t_id, time)
-            self.transaction_map.pop(t_id)
-            self.remove_transaction_from_wait_for_graph(t_id)
-            print(f'commited {t_id}')
-    
+        sites_accessed = self.transaction_map[t_id].sites_accessed
+        for site in sites_accessed:
+            self.site_manager.commit(site, t_id, time)
+        self.transaction_map.pop(t_id)
+        self.remove_transaction_from_wait_for_graph(t_id)
+        print(f'commited {t_id}')
+
     def dump(self):
         self.site_manager.dump()
 
     def fail(self, site):
         self.site_manager.fail(site)
+        self.site_manager.print_all_site_status()
         for k, transaction in self.transaction_map.items():
             if site in transaction.sites_accessed:
                 transaction.status = TransactionStatus.ABORTED
 
     def recover(self, site):
         self.site_manager.recover(site)
+        self.site_manager.print_all_site_status()
 
     def process_remaining_instructions(self):
         rem_inst = []
@@ -116,7 +124,7 @@ class TransactionManager:
                 if inst.type == InstructionType.READ:
                     self.read(inst.t_id, inst.var, inst.time)
                 elif inst.type == InstructionType.WRITE:
-                    self.write(inst.t_id, inst.var,inst.val, inst.time)
+                    self.write(inst.t_id, inst.var, inst.val, inst.time)
                 if self.transaction_map[inst.t_id].status == TransactionStatus.BLOCKED:
                     rem_inst.append(inst)
         self.remaining_instructions = rem_inst
@@ -132,7 +140,7 @@ class TransactionManager:
 
     def update_wait_for_graph(self, t_id, conflicting_t_id):
         self.wait_for_graph[t_id].add(conflicting_t_id)
-    
+
     def update_wait_for_graph_with_executing_transaction(self, t_id, var):
         t_ids = self.site_manager.get_locking_transaction(var)
         t_ids.discard(t_id)
@@ -173,5 +181,3 @@ class TransactionManager:
                 max_time = trans.start_time
                 max_trans = trans.name
         return (max_trans, max_time)
-
-
