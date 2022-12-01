@@ -139,6 +139,7 @@ class SiteManager:
                     #commit the values
                     self.sites[site_name].variables[lock.var_name].commited_value = self.sites[site_name].variables[lock.var_name].val
                     self.sites[site_name].variables[lock.var_name].commited_time = time
+                    self.sites[site_name].variables[lock.var_name].readable = True
             locks[:] = [lock for lock in locks if lock.t_id != t_id]
     
     def dump(self):

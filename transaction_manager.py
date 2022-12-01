@@ -59,7 +59,7 @@ class TransactionManager:
         conflicting_transaction = self.check_conflict_in_remaining_instructions(
             instruction)
         # print(conflicting_transaction)
-        if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0:
+        if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0: #write allowed if conflict is due to read after recovery
             sites_written = self.site_manager.write(t_id, var, val)
             if len(sites_written) > 0:
                 transaction.status = TransactionStatus.RUNNING
