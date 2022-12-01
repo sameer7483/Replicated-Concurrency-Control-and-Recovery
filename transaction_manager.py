@@ -21,6 +21,7 @@ class TransactionManager:
     def beginRO(self, t_id, time):
         transaction = Transaction(t_id, TransactionStatus.READY, time, True)
         self.transaction_map[t_id] = transaction
+        print(f'Read Only {t_id} begins at time {time}')
 
     def read(self, t_id, var, time):
         if t_id not in self.transaction_map:
@@ -31,7 +32,7 @@ class TransactionManager:
         conflicting_transaction = self.check_conflict_in_remaining_instructions(
             instruction)
         if conflicting_transaction == None:
-            val, site = self.site_manager.read(t_id, var)
+            val, site = self.site_manager.read(transaction, var)
             if site is not None:
                 if transaction.status != TransactionStatus.ABORTED:
                     transaction.status = TransactionStatus.RUNNING

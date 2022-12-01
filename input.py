@@ -41,6 +41,7 @@ def main():
                 transaction_manager.begin(t_id, time)
             elif command == 'beginRO':
                 t_id = args[0]
+                transaction_manager.beginRO(t_id, time)
             elif command == 'W':
                 t_id = args[0]
                 var = args[1]

@@ -3,6 +3,7 @@ from lock_type import LockType
 from collections import defaultdict
 from variable import Variable
 from lock import Lock
+import bisect
 class Site:
     def __init__(self,name, status, vars):
         self.name = name
@@ -74,6 +75,15 @@ class Site:
             return False
         return self.can_acquire_read_lock(t_id, var_name)
 
+    def can_read_read_only(self, var_name):
+        if self.status != Status.AVAILABLE:
+            return False
+        if var_name not in self.variables:
+            return False
+        if self.variables[var_name].readable == False:
+            return False 
+        return True          
+
     def can_write(self, t_id, var_name):
         if self.status != Status.AVAILABLE:
             return False
@@ -109,7 +119,17 @@ class SiteManager:
             sites[str(i)] = s        
         self.sites = sites
 
-    def read(self, t_id, var):
+    def read(self, transaction, var):
+        t_id = transaction.name
+        read_only = transaction.read_only
+        start_time = transaction.start_time
+        if read_only:
+            print(t_id)
+            for name, site in self.sites.items():
+                if site.can_read_read_only(var):
+                    time_list = list(site.variables[var].version_history.keys())
+                    idx = bisect.bisect_right(time_list, start_time)
+                    return (site.variables[var].version_history[idx-1], site.name)  
         for name, site in self.sites.items():
             if site.can_read(t_id, var):
                 site.acquire_read_lock(t_id, var)
@@ -140,6 +160,7 @@ class SiteManager:
                     self.sites[site_name].variables[lock.var_name].commited_value = self.sites[site_name].variables[lock.var_name].val
                     self.sites[site_name].variables[lock.var_name].commited_time = time
                     self.sites[site_name].variables[lock.var_name].readable = True
+                    self.sites[site_name].variables[lock.var_name].version_history[time] = self.sites[site_name].variables[lock.var_name].val
             locks[:] = [lock for lock in locks if lock.t_id != t_id]
     
     def dump(self):

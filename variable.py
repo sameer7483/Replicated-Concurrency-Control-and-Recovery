@@ -7,3 +7,4 @@ class Variable:
         self.commited_time = 0
         self.replicated = replicated
         self.readable = True
+        self.version_history = {0:val} #dict of time and val
