@@ -81,6 +81,11 @@ class Site:
             return False
         return True  
 
+    def get_locking_transaction(self, var):
+        t_ids = set()
+        for lock in self.lock_table[var]:
+            t_ids.add(lock.t_id)
+        return t_ids
 
 
 class SiteManager:
@@ -122,8 +127,6 @@ class SiteManager:
                     sites_written.append(name)
         return sites_written
 
-
-
     def end(self, t_id):
         pass
 
@@ -134,7 +137,7 @@ class SiteManager:
                     #commit the values
                     self.sites[site_name].variables[lock.var_name].commited_value = self.sites[site_name].variables[lock.var_name].val
                     self.sites[site_name].variables[lock.var_name].commited_time = time
-            locks[:] = [i for i in locks if lock.t_id != t_id]
+            locks[:] = [lock for lock in locks if lock.t_id != t_id]
     
     def dump(self):
         for name, site in self.sites.items():
@@ -150,6 +153,18 @@ class SiteManager:
     def fail(self, site):
         self.sites[site].fail()
         print(f'site: {site} failed')
+    
+    def abort(self, site_name, t_id, time):
+        for locks in self.sites[site_name].lock_table.values():
+            locks[:] = [lock for lock in locks if lock.t_id != t_id]
 
     def recover(self, site):
         self.sites[site].recover()
+    
+    def get_locking_transaction(self, var):
+        t_ids = set()
+        for site in self.sites.values():
+            t_ids.update(site.get_locking_transaction(var))
+        return t_ids
+
+
