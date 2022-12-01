@@ -33,7 +33,8 @@ class TransactionManager:
         if conflicting_transaction == None:
             val, site = self.site_manager.read(t_id, var)
             if site is not None:
-                transaction.status = TransactionStatus.RUNNING
+                if transaction.status != TransactionStatus.ABORTED:
+                    transaction.status = TransactionStatus.RUNNING
                 self.transaction_map[t_id].sites_accessed.add(site)
                 print(
                     f'{t_id} accessed {var} from the site: {site} having value: {val}')
@@ -62,7 +63,8 @@ class TransactionManager:
         if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0: #write allowed if conflict is due to read after recovery
             sites_written = self.site_manager.write(t_id, var, val)
             if len(sites_written) > 0:
-                transaction.status = TransactionStatus.RUNNING
+                if transaction.status != TransactionStatus.ABORTED:
+                    transaction.status = TransactionStatus.RUNNING
                 self.transaction_map[t_id].sites_accessed.update(sites_written)
                 print(
                     f'{t_id} wrote {var} to the sites: {sites_written} with value: {val}')
@@ -81,6 +83,7 @@ class TransactionManager:
     def end(self, t_id, time):
         if t_id in self.transaction_map:
             if self.transaction_map[t_id].status == TransactionStatus.ABORTED:
+                print(f'Transaction:{t_id} aborts due to previous access to failed site')
                 self.abort(t_id, time)
             else:
                 self.commit(t_id, time)
@@ -108,14 +111,15 @@ class TransactionManager:
 
     def fail(self, site):
         self.site_manager.fail(site)
-        self.site_manager.print_all_site_status()
+        # self.site_manager.print_all_site_status()
         for k, transaction in self.transaction_map.items():
+            print(transaction.name)
             if site in transaction.sites_accessed:
                 transaction.status = TransactionStatus.ABORTED
 
     def recover(self, site):
         self.site_manager.recover(site)
-        self.site_manager.print_all_site_status()
+        # self.site_manager.print_all_site_status()
 
     def process_remaining_instructions(self):
         rem_inst = []
@@ -166,16 +170,16 @@ class TransactionManager:
         return False
 
     def detect_and_handle_deadlock(self, t_id):
-        cycle = set()
-        if self.is_deadlocked(t_id, set(), cycle):
-            y_tid, time = self.find_youngest_transaction(cycle)
+        rec_vis = set()
+        if self.is_deadlocked(t_id, set(), rec_vis):
+            y_tid, time = self.find_youngest_transaction(rec_vis)
             print(f'Aborting transaction :{y_tid} because of deadlock')
             self.abort(y_tid, time)
 
-    def find_youngest_transaction(self, cycle):
+    def find_youngest_transaction(self, rec_vis):
         max_time = 0
         max_trans = ''
-        for t_id in cycle:
+        for t_id in rec_vis:
             trans = self.transaction_map[t_id]
             if trans.start_time >= max_time:
                 max_time = trans.start_time
