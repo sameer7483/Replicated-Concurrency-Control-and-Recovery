@@ -1,7 +1,9 @@
 class Variable:
-    def __init__(self, name, val, lock):
+    def __init__(self, name, val, lock, replicated = False):
         self.name = name
         self.val = val
         self.lock = lock
         self.commited_value = val
         self.commited_time = 0
+        self.replicated = True
+        self.readable = True

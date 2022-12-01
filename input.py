@@ -55,8 +55,10 @@ def main():
                 transaction_manager.end(t_id, time)
             elif command == 'fail':
                 s_id = args[0]
+                transaction_manager.fail(s_id)
             elif command == 'recover':
                 s_id = args[0]
+                transaction_manager.recover(s_id)
             elif command == 'dump':
                 transaction_manager.dump()
             else:

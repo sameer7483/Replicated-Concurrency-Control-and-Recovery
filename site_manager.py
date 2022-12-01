@@ -55,15 +55,22 @@ class Site:
 
     def fail(self):
         self.status = Status.FAILED
-        self.lock_table.clear()
+        for key, locks in self.lock_table.items():
+            locks.clear()
+        #make all replicated var as non-readable:
+        for var in self.variables.values():
+            if var.replicated:
+                var.readable = False
     
     def recover(self):
-        pass
+        self.status = Status.AVAILABLE
     
     def can_read(self, t_id, var_name):
         if not self.status.AVAILABLE:
             return False
         if var_name not in self.variables:
+            return False
+        if self.variables[var_name].readable == False:
             return False
         return self.can_acquire_read_lock(t_id, var_name)
 
@@ -72,7 +79,9 @@ class Site:
             return False
         if var_name not in self.variables:
             return False
-        return True       
+        return True  
+
+
 
 class SiteManager:
     def __init__(self):
@@ -82,9 +91,12 @@ class SiteManager:
         for i in range(1, num_site+1):
             variables = defaultdict(Variable)
             for j in range(1, num_var+1):
-                if j % 2 == 0 or (j % 2 != 0 and (1+ j%10) == i):
+                if j % 2 == 0 or ():
+                    var = Variable('x'+str(j), 10*j, Lock(LockType.NO_LOCK, 'x'+str(j)), True)
+                    variables['x'+str(j)] = var   
+                elif j % 2 != 0 and (1+ j%10) == i:
                     var = Variable('x'+str(j), 10*j, Lock(LockType.NO_LOCK, 'x'+str(j)))
-                    variables['x'+str(j)] = var             
+                    variables['x'+str(j)] = var                         
             s = Site(str(i),Status.READY, variables)
             sites[str(i)] = s        
         self.sites = sites
@@ -94,6 +106,7 @@ class SiteManager:
             if site.can_read(t_id, var):
                 site.acquire_read_lock(t_id, var)
                 return (site.variables[var].val, site.name)
+        return (None, None) #cannot read bcoz of conflict
         
     def write(self, t_id, var, val):
         can_write_all = True
@@ -125,7 +138,7 @@ class SiteManager:
     
     def dump(self):
         for name, site in self.sites.items():
-            var_vals = [var.name +':'+str(var.val) for var in site.variables.values()]
+            var_vals = [var.name +':'+str(var.commited_value) for var in site.variables.values()]
             string_var_vals = ','.join(var_vals)
             print(f'{name}: {string_var_vals}')
 
@@ -133,3 +146,10 @@ class SiteManager:
         for var, locks in self.sites[site_name].lock_table.items():
             locking_trans = ', '.join([lock.t_id for lock in locks])
             print(f'{var}: {locking_trans}')
+
+    def fail(self, site):
+        self.sites[site].fail()
+        print(f'site: {site} failed')
+
+    def recover(self, site):
+        self.sites[site].recover()
