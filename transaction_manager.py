@@ -29,7 +29,7 @@ class TransactionManager:
             return
         instruction = Instruction(t_id, InstructionType.READ, var, None, time)
         transaction = self.transaction_map[t_id]
-        conflicting_transaction = self.check_conflict_in_remaining_instructions(
+        conflicting_transaction = self.check_conflict_in_remaining_instructions(t_id,
             instruction)
         if conflicting_transaction == None:
             val, site = self.site_manager.read(transaction, var)
@@ -59,7 +59,7 @@ class TransactionManager:
         instruction = Instruction(t_id, InstructionType.WRITE, var, val, time)
         transaction = self.transaction_map[t_id]
         conflicting_transaction = self.check_conflict_in_remaining_instructions(
-            instruction)
+            t_id, instruction)
         # print(conflicting_transaction)
         if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0: #write allowed if conflict is due to read after recovery
             sites_written = self.site_manager.write(t_id, var, val)
@@ -124,6 +124,7 @@ class TransactionManager:
 
     def process_remaining_instructions(self):
         rem_inst = []
+        print(len(self.remaining_instructions))
         for inst in self.remaining_instructions:
             if inst.t_id in self.transaction_map:
                 if inst.type == InstructionType.READ:
@@ -134,28 +135,31 @@ class TransactionManager:
                     rem_inst.append(inst)
         self.remaining_instructions = rem_inst
 
-    def check_conflict_in_remaining_instructions(self, instruction):
-        for inst in reversed(self.remaining_instructions):
-            if inst.time >= instruction.time:
-                continue
-            elif inst.t_id != instruction.t_id and inst.var == instruction.var:
-                if (instruction.type == InstructionType.WRITE) or (instruction.type == InstructionType.READ and inst.type == InstructionType.WRITE):
-                    return inst.t_id
+    def check_conflict_in_remaining_instructions(self,t_id, instruction):
+        if not self.transaction_map[t_id].read_only:
+            for inst in reversed(self.remaining_instructions):
+                if inst.time >= instruction.time:
+                    continue
+                elif inst.t_id != instruction.t_id and inst.var == instruction.var:
+                    if (instruction.type == InstructionType.WRITE) or (instruction.type == InstructionType.READ and inst.type == InstructionType.WRITE):
+                        return inst.t_id
         return None
 
     def update_wait_for_graph(self, t_id, conflicting_t_id):
-        self.wait_for_graph[t_id].add(conflicting_t_id)
+        if not self.transaction_map[t_id].read_only:
+            self.wait_for_graph[t_id].add(conflicting_t_id)
 
     def update_wait_for_graph_with_executing_transaction(self, t_id, var):
-        t_ids = self.site_manager.get_locking_transaction(var)
-        t_ids.discard(t_id)
-        self.wait_for_graph[t_id].update(t_ids)
+        if not self.transaction_map[t_id].read_only:
+            t_ids = self.site_manager.get_locking_transaction(var)
+            t_ids.discard(t_id)
+            self.wait_for_graph[t_id].update(t_ids)
 
     def remove_transaction_from_wait_for_graph(self, t_id):
-        for t_ids in self.wait_for_graph.values():
-            t_ids.discard(t_id)
-        if t_id in self.wait_for_graph:
-            self.wait_for_graph.pop(t_id)
+            for t_ids in self.wait_for_graph.values():
+                t_ids.discard(t_id)
+            if t_id in self.wait_for_graph:
+                self.wait_for_graph.pop(t_id)
 
     def is_deadlocked(self, t_id, vis, rec_vis):
         if t_id in rec_vis:

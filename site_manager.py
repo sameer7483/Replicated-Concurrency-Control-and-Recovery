@@ -124,11 +124,10 @@ class SiteManager:
         read_only = transaction.read_only
         start_time = transaction.start_time
         if read_only:
-            print(t_id)
             for name, site in self.sites.items():
                 if site.can_read_read_only(var):
                     time_list = list(site.variables[var].version_history.keys())
-                    idx = bisect.bisect_right(time_list, start_time)
+                    idx = bisect.bisect_left(time_list, start_time)
                     return (site.variables[var].version_history[idx-1], site.name)  
         for name, site in self.sites.items():
             if site.can_read(t_id, var):
