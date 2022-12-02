@@ -10,7 +10,7 @@ class TransactionManager:
     def __init__(self):
         self.transaction_map = defaultdict(Transaction)
         self.remaining_instructions = []
-        self.site_manager = SiteManager()
+        self.site_manager = SiteManager(10, 20)
         self.wait_for_graph = defaultdict(set)
 
     def begin(self, t_id, time):
@@ -60,7 +60,6 @@ class TransactionManager:
         transaction = self.transaction_map[t_id]
         conflicting_transaction = self.check_conflict_in_remaining_instructions(
             t_id, instruction)
-        # print(conflicting_transaction)
         if conflicting_transaction == None or len(self.wait_for_graph[conflicting_transaction]) == 0: #write allowed if conflict is due to read after recovery
             sites_written = self.site_manager.write(t_id, var, val)
             if len(sites_written) > 0:
@@ -184,5 +183,5 @@ class TransactionManager:
             trans = self.transaction_map[t_id]
             if trans.start_time >= max_time:
                 max_time = trans.start_time
-                max_trans = trans.name
+                max_trans = trans.id
         return (max_trans, max_time)
