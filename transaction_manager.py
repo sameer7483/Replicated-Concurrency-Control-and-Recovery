@@ -186,9 +186,3 @@ class TransactionManager:
                 max_time = trans.start_time
                 max_trans = trans.name
         return (max_trans, max_time)
-
-    # def abort_transaction_with_failed_site(self, t_id):
-    #     for site in self.transaction_map[t_id].sites_accessed:
-    #         if t_id not in self.site_manager.get_locking_transaction_on_site(site):
-    #             self.transaction_map[t_id].status = TransactionStatus.ABORTED
-    #             return
