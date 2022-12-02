@@ -32,6 +32,8 @@ def main():
     if n > 1:
         file_name = sys.argv[1]
         for line in fileinput.input(files=file_name):
+            if line.startswith('//'):
+                continue
             time += 1
             line = line.strip('\n')
             print(line)
