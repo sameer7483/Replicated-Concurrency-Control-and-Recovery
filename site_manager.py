@@ -181,11 +181,11 @@ class SiteManager:
         print(f'site: {site} failed')
     
     def abort(self, site_name, t_id, time):
-        for locks in self.sites[site_name].lock_table.values():
-            locks[:] = [lock for lock in locks if lock.t_id != t_id]
         for var in self.sites[site_name].variables.values():
             if t_id in self.sites[site_name].get_locking_transaction(var.name):
                 var.val = var.commited_value
+        for locks in self.sites[site_name].lock_table.values():
+            locks[:] = [lock for lock in locks if lock.t_id != t_id]
 
     def recover(self, site):
         self.sites[site].recover()
