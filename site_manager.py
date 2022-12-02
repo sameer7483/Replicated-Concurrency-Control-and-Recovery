@@ -14,21 +14,18 @@ class Site:
     def can_acquire_read_lock(self, t_id, var_name):
         for lock in self.lock_table[var_name]:
             if lock.t_id != t_id and lock.lock_type == LockType.WRITE: 
-                print("Cannot Acquire Lock and Write Lock Already acquired by another t_id")
                 return False
         return True
 
     def acquire_read_lock(self, t_id, var_name):
         for lock in self.lock_table[var_name]:
             if lock.t_id == t_id:
-                print('Lock Already exist')
                 return
         self.lock_table[var_name].append(Lock(LockType.READ, var_name, t_id))
 
     def can_acquire_write_lock(self, t_id, var_name):
         for lock in self.lock_table[var_name]:
             if lock.lock_type != LockType.NO_LOCK and lock.t_id != t_id:
-                print("Cannot Acquire Write Lock as Lock Already acquired by another t_id")
                 return False
         return True
 
@@ -37,7 +34,6 @@ class Site:
         curr_lock = None
         for lock in self.lock_table[var_name]:
             if lock.t_id == t_id:
-                print('Lock Already exist')
                 curr_lock = lock
                 found = True
                 break
@@ -100,6 +96,13 @@ class Site:
     def print_site_status(self):
         print(f'{self.name}: {self.status}')
 
+    def get_locking_transaction_on_site(self):
+        t_ids = set()
+        for locks in self.lock_table.values():
+            for lock in locks:
+                t_ids.update(lock.t_id)
+        return t_ids
+
 
 class SiteManager:
     def __init__(self):
@@ -128,7 +131,7 @@ class SiteManager:
                 if site.can_read_read_only(var):
                     time_list = list(site.variables[var].version_history.keys())
                     idx = bisect.bisect_left(time_list, start_time)
-                    return (site.variables[var].version_history[idx-1], site.name)  
+                    return (site.variables[var].version_history[time_list[idx-1]], site.name)  
         for name, site in self.sites.items():
             if site.can_read(t_id, var):
                 site.acquire_read_lock(t_id, var)
@@ -180,6 +183,9 @@ class SiteManager:
     def abort(self, site_name, t_id, time):
         for locks in self.sites[site_name].lock_table.values():
             locks[:] = [lock for lock in locks if lock.t_id != t_id]
+        for var in self.sites[site_name].variables.values():
+            if t_id in self.sites[site_name].get_locking_transaction(var.name):
+                var.val = var.commited_value
 
     def recover(self, site):
         self.sites[site].recover()
@@ -193,5 +199,8 @@ class SiteManager:
     def print_all_site_status(self):
         for site in self.sites.values():
             site.print_site_status()
+
+    def get_locking_transaction_on_site(self, site):
+        return self.sites[site].get_locking_transaction_on_site()
 
 

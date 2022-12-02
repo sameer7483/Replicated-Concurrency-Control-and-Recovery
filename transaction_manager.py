@@ -16,12 +16,12 @@ class TransactionManager:
     def begin(self, t_id, time):
         transaction = Transaction(t_id, TransactionStatus.READY, time)
         self.transaction_map[t_id] = transaction
-        print(f'{t_id} begins at time {time}')
+        print(f'{t_id} begins')
 
     def beginRO(self, t_id, time):
         transaction = Transaction(t_id, TransactionStatus.READY, time, True)
         self.transaction_map[t_id] = transaction
-        print(f'Read Only {t_id} begins at time {time}')
+        print(f'Read Only {t_id} begins')
 
     def read(self, t_id, var, time):
         if t_id not in self.transaction_map:
@@ -45,7 +45,7 @@ class TransactionManager:
                     t_id, var)
         else:
             self.update_wait_for_graph(t_id, conflicting_transaction)
-        if transaction.status != TransactionStatus.BLOCKED:
+        if transaction.status != TransactionStatus.BLOCKED and transaction.status != TransactionStatus.ABORTED:
             self.remaining_instructions.append(instruction)
             transaction.status = TransactionStatus.BLOCKED
             print(f'Blocked transaction: {t_id}')
@@ -75,13 +75,13 @@ class TransactionManager:
                     t_id, var)
         else:
             self.update_wait_for_graph(t_id, conflicting_transaction)
-        if transaction.status != TransactionStatus.BLOCKED:
+        if transaction.status != TransactionStatus.BLOCKED and transaction.status != TransactionStatus.ABORTED:
             self.remaining_instructions.append(instruction)
             transaction.status = TransactionStatus.BLOCKED
-            print(f'Blocked transaction: {t_id}')
+            print(f'Blocked transaction: {t_id}')  
         self.detect_and_handle_deadlock(t_id)
 
-    def end(self, t_id, time):
+    def end(self, t_id, time):      
         if t_id in self.transaction_map:
             if self.transaction_map[t_id].status == TransactionStatus.ABORTED:
                 print(f'Transaction:{t_id} aborts due to previous access to failed site')
@@ -112,19 +112,15 @@ class TransactionManager:
 
     def fail(self, site):
         self.site_manager.fail(site)
-        # self.site_manager.print_all_site_status()
         for k, transaction in self.transaction_map.items():
-            print(transaction.name)
             if site in transaction.sites_accessed:
                 transaction.status = TransactionStatus.ABORTED
 
     def recover(self, site):
         self.site_manager.recover(site)
-        # self.site_manager.print_all_site_status()
 
     def process_remaining_instructions(self):
         rem_inst = []
-        print(len(self.remaining_instructions))
         for inst in self.remaining_instructions:
             if inst.t_id in self.transaction_map:
                 if inst.type == InstructionType.READ:
@@ -190,3 +186,9 @@ class TransactionManager:
                 max_time = trans.start_time
                 max_trans = trans.name
         return (max_trans, max_time)
+
+    # def abort_transaction_with_failed_site(self, t_id):
+    #     for site in self.transaction_map[t_id].sites_accessed:
+    #         if t_id not in self.site_manager.get_locking_transaction_on_site(site):
+    #             self.transaction_map[t_id].status = TransactionStatus.ABORTED
+    #             return
