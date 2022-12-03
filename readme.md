@@ -21,7 +21,7 @@ We have implemented a distributed database, complete with multiversion concurren
 At the root of the project, run 
 
 ```
-$ python driver.py <input_file_path>
+$ python3 driver.py <input_file_path>
 ``` 
 
 Sample Inputs:
