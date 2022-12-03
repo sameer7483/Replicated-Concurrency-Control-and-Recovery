@@ -14,19 +14,21 @@
 
 ### Introduction 
 
+We have implemented a distributed database, complete with multiversion concurrency control, deadlock detection, replication, and failure recovery with data as mentioned in the project specification. We have used the available copies algorithm  approach to replication using strict two phase locking (using read and write locks) at each site and validation at commit time. Read-only transactions have been implemented using multiversion read consistency. We have also implemented to detect deadlocks using cycle detection and abort the youngest transaction in the cycle, if there is any deadlock detected.
+
 ### Running
 
 At the root of the project, run 
 
 ```
-$ python driver.py test_file_path
+$ python driver.py <input_file_path>
 ``` 
 
 Sample Inputs:
 
+Note : The input file should not have any empty lines.
 ``` 
 //Sample Input 1
-
 // All should commit
 begin(T1)
 begin(T2)
@@ -39,7 +41,6 @@ end(T2)
 
 ```
 //Sample Input 2
-
 // T3 must wait till the commit of T2 before it reads x4
 // (because of locking), so sees 44.
 // T3 must abort though because the lock information is lost on site 4 
@@ -60,7 +61,7 @@ end(T1)
 
 ## Data Models
 
-Below are the Data Models used in the Project to build a a distributed database system.
+Below are the Data Models used in the Project to build a distributed database system.
 
 ```python
 class Variable:
@@ -128,12 +129,11 @@ class Instruction:
 
 ## CLASSES - LOGICAL DESCRIPTION 
 
+
 **Site** class describes a Data Site .
 
 ```python
 class Site:
-
-    '''Site class  describes a Site'''
 
     def __init__(self,name, status, vars):
         '''creates and initialises a new Site
@@ -296,12 +296,11 @@ class Site:
 
 ```
 
+
 **SiteManager** class  manages all the sites and abstracts the underlying distribution of the Site
 
 ```python
 class SiteManager:
-
-    '''class that manages all the sites and abstracts the underlying distribution of the Site'''
 
     def __init__(self, num_site, num_var):
         '''creates and initialises a new Site Manager
@@ -428,12 +427,11 @@ class SiteManager:
         ''' 
 ```
 
+
 **TransactionManager** class manages all the transactions
 
 ```python
 class TransactionManager:
-
-    '''class that manages all the transactions'''
 
     def __init__(self):
         '''creates and initialises a new Transaction Manager
